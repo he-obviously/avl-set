@@ -1,5 +1,6 @@
 #pragma once
 #include <initializer_list>
+#include <cassert>
 
 template<class T>
 class Node {
@@ -152,7 +153,9 @@ public:
     }
 
     static Node* Prev(Node* v) {
-        if (v->left != nullptr) {
+        if (v == nullptr) {
+            return v;
+        } else if (v->left != nullptr) {
             return FindMax(v->left);
         } else {
             Node* u = v->parent;
@@ -318,14 +321,12 @@ public:
         }
 
         iterator& operator++() {
-            Node<T>* next = Node<T>::Next(ptr);
-            ptr = next;
+            ptr = Node<T>::Next(ptr);
             return *this;
         }
 
         iterator& operator--() {
-            Node<T>* next = Node<T>::Prev(ptr);
-            ptr = next;
+            ptr = Node<T>::Prev(ptr);
             return *this;
         }
 
