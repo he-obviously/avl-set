@@ -197,7 +197,7 @@ private:
 
     int Diff() const {
         int left_height = (left == nullptr ? 0 : left->height),
-            right_height = (right == nullptr ? 0 : right->height);
+                right_height = (right == nullptr ? 0 : right->height);
         return left_height - right_height;
     }
 
@@ -306,11 +306,7 @@ public:
         }
 
         iterator(const iterator& v) {
-            ptr = new Node<T>(v.ptr->key);
-        }
-
-        ~iterator() {
-            delete ptr;
+            ptr = v.ptr;
         }
 
         friend bool operator==(iterator a, iterator b) {
@@ -323,13 +319,13 @@ public:
 
         iterator& operator++() {
             Node<T>* next = Node<T>::Next(ptr);
-            *this = iterator(next);
+            ptr = next;
             return *this;
         }
 
         iterator& operator--() {
             Node<T>* next = Node<T>::Prev(ptr);
-            *this = iterator(next);
+            ptr = next;
             return *this;
         }
 
@@ -345,12 +341,12 @@ public:
             return temp;
         }
 
-        friend T operator*(iterator a) {
-            return a.ptr->key;
+        T operator*() {
+            return ptr->key;
         }
 
-        T* operator->() {
-            return &ptr->key;
+        const T* operator->() {
+            return &(ptr->key);
         }
     };
 
@@ -400,27 +396,27 @@ public:
         return size_ == 0;
     }
 
-    iterator find(T key) const {
+    iterator find(const T& key) const {
         Node<T>* v = Search(key);
         return iterator(v);
     }
 
-    void insert(T key) {
+    void insert(const T& key) {
         Insert(key);
     }
 
-    void erase(T key) {
+    void erase(const T& key) {
         Erase(key);
     }
 
-    iterator lower_bound(T key) const {
+    iterator lower_bound(const T& key) const {
         Node<T>* v = LowerBound(key);
         return iterator(v);
     }
 
 private:
     Node<T>* root_ = nullptr;
-    iterator begin_ = iterator(), end_ = iterator();
+    iterator begin_, end_;
     int size_ = 0;
 
     Node<T>* Search(T key) const {
@@ -441,7 +437,7 @@ private:
             --size_;
             root_ = Node<T>::Erase(root_, key);
             if (size_ == 0) {
-                begin_ = iterator();
+                begin_.ptr = nullptr;
             } else {
                 Node<T>* min = Node<T>::FindMin(root_);
                 begin_.ptr = min;
