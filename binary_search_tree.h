@@ -9,37 +9,48 @@ public:
 
     Node() = default;
 
-    explicit Node(T k) {
+    explicit Node(const T& k) {
         this->key = k;
     }
 
-    Node(const Node& v) {
-        this = Copy(v);
-    }
+    /*explicit Node(const Node* v) {
+        Node* t = new Node(Copy(v, nullptr));
+        key = t->key;
+        left = t->left;
+        right = t->right;
+        parent = t->parent;
+    }*/
 
-    static Node* Copy(Node* v) {
+    /*static void Print(Node* v) {
+        if (v == nullptr) {
+            return;
+        }
+        Print(v->left);
+        std::cout << v->key << " (parent = ";
+        std::cout << (v->parent == nullptr ? -1 : v->parent->key);
+        std::cout << ", left = ";
+        std::cout << (v->left == nullptr ? -1 : v->left->key);
+        std::cout << ", right = ";
+        std::cout << (v->right == nullptr ? -1 : v->right->key);
+        std::cout << ", height = " << v->height << ")\n";
+        Print(v->right);
+    }*/
+
+    static Node* Copy(const Node* v, Node* p) {
         if (v == nullptr) {
             return nullptr;
         } else {
             Node *u = new Node(v->key);
-            u->parent = v->parent;
-            u->left = Copy(v->left);
-            u->right = Copy(v->right);
+            u->parent = p;
+            u->left = Copy(v->left, u);
+            u->right = Copy(v->right, u);
+            return u;
         }
     }
 
     ~Node() {
-        Delete(this);
-    }
-
-    static void Delete(Node* v) {
-        if (v == nullptr) {
-            return;
-        } else {
-            Delete(v->left);
-            Delete(v->right);
-            delete v;
-        }
+        delete this->left;
+        delete this->right;
     }
 
     static Node* Search(Node* v, T val) {
@@ -54,7 +65,7 @@ public:
         }
     }
 
-    static Node* LowerBound(Node* v, T val) {
+    static Node* LowerBound(Node* v, T val){
         Node* ans = nullptr;
         while (v != nullptr) {
             if (!(v->key < val)) {
@@ -83,6 +94,7 @@ public:
 
     static Node* Erase(Node* v, T val) {
         if (v->left == nullptr && v->right == nullptr) {
+            delete v;
             return nullptr;
         }
         while (v->key < val || val < v->key) {
@@ -92,6 +104,7 @@ public:
                 v = v->right;
             }
         }
+        Node* to_delete = v;
         if (v->left == nullptr && v->right == nullptr) {
             if (v->parent->left == v) {
                 v->parent->left = nullptr;
@@ -136,6 +149,10 @@ public:
             v = v->Balance();
             v = v->parent;
         }
+        to_delete->parent = nullptr;
+        to_delete->left = nullptr;
+        to_delete->right = nullptr;
+        delete to_delete;
         return v->Balance();
     }
 
@@ -218,6 +235,13 @@ private:
     Node* RotateLeft() {
         Node<T>* u = right;
         u->parent = parent;
+        if (u->parent != nullptr) {
+            if (u->parent->left == this) {
+                u->parent->left = u;
+            } else {
+                u->parent->right = u;
+            }
+        }
         parent = u;
         if (u->left != nullptr) {
             u->left->parent = this;
@@ -232,6 +256,13 @@ private:
     Node* RotateRight() {
         Node<T>* u = left;
         u->parent = parent;
+        if (u->parent != nullptr) {
+            if (u->parent->left == this) {
+                u->parent->left = u;
+            } else {
+                u->parent->right = u;
+            }
+        }
         parent = u;
         if (u->right != nullptr) {
             u->right->parent = this;
@@ -306,23 +337,30 @@ public:
     class iterator {
     public:
         Node<T>* ptr = nullptr;
+        const Set* st = nullptr;
 
         iterator() = default;
 
-        explicit iterator(Node<T>* v) {
+        iterator(Node<T>* v, const Set* s) {
             ptr = v;
+            st = s;
+        }
+
+        explicit iterator(const Set* s) {
+            st = s;
         }
 
         iterator(const iterator& v) {
             ptr = v.ptr;
+            st = v.st;
         }
 
         friend bool operator==(iterator a, iterator b) {
-            return a.ptr == b.ptr;
+            return a.ptr == b.ptr && a.st == b.st;
         }
 
         friend bool operator!=(iterator a, iterator b) {
-            return a.ptr != b.ptr;
+            return a.ptr != b.ptr || a.st != b.st;
         }
 
         iterator& operator++() {
@@ -331,18 +369,22 @@ public:
         }
 
         iterator& operator--() {
-            ptr = Node<T>::Prev(ptr);
+            if (ptr == nullptr) {
+                ptr = Node<T>::FindMax(st->root_);
+            } else {
+                ptr = Node<T>::Prev(ptr);
+            }
             return *this;
         }
 
         iterator operator++(int) {
-            iterator temp(ptr);
+            iterator temp(ptr, st);
             ++(*this);
             return temp;
         }
 
         iterator operator--(int) {
-            iterator temp(ptr);
+            iterator temp(ptr, st);
             --(*this);
             return temp;
         }
@@ -375,15 +417,28 @@ public:
 
     ~Set() {
         delete root_;
-        begin_ = iterator();
+        begin_ = iterator(this);
+    }
+
+    Set(const Set& a) {
+        root_ = Node<T>::Copy(a.root_, nullptr);
+        size_ = a.size_;
+        if (size_ != 0) {
+            begin_ = iterator(Node<T>::FindMin(root_), this);
+        }
     }
 
     Set& operator=(const Set& a) {
         if (this == &a) {
             return *this;
         }
-        root_ = a.root_;
-        begin_ = a.begin_;
+        delete root_;
+        root_ = Node<T>::Copy(a.root_, nullptr);
+        size_ = a.size_;
+        if (size_ != 0) {
+            begin_ = iterator(Node<T>::FindMin(root_), this);
+        }
+        return *this;
     }
 
     iterator begin() const {
@@ -404,31 +459,25 @@ public:
 
     iterator find(const T& key) const {
         Node<T>* v = Search(key);
-        return iterator(v);
+        return iterator(v, this);
     }
 
     void insert(const T& key) {
         Insert(key);
-        if (!Node<T>::check(root_)) {
-            std::cout << "error!";
-        }
     }
 
     void erase(const T& key) {
         Erase(key);
-        if (!Node<T>::check(root_)) {
-            std::cout << "error!";
-        }
     }
 
     iterator lower_bound(const T& key) const {
         Node<T>* v = LowerBound(key);
-        return iterator(v);
+        return iterator(v, this);
     }
 
 private:
     Node<T>* root_ = nullptr;
-    iterator begin_, end_;
+    iterator begin_ = iterator(this), end_ = iterator(this);
     int size_ = 0;
 
     Node<T>* Search(T key) const {
@@ -460,5 +509,4 @@ private:
     Node<T>* LowerBound(T key) const {
         return Node<T>::LowerBound(root_, key);
     }
-
 };
