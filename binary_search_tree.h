@@ -183,14 +183,19 @@ public:
         }
     }
 
-    /*static void Print(Node* v) {
-        if (v == nullptr) return;
-        Print(v->left);
-        std::cout << v->key << " (parent = ";
-        std::cout << (v->parent ? v->parent->key : -1);
-        std::cout << ")\n";
-        Print(v->right);
-    }*/
+    static bool check(Node* v) {
+        if (v == nullptr) {
+            return true;
+        } else {
+            if (v->left != nullptr && v->left->parent != v) {
+                return false;
+            } else if (v->right != nullptr && v->right->parent != v) {
+                return false;
+            } else {
+                return check(v->left) && check(v->right);
+            }
+        }
+    }
 
 private:
     int height = 1;
@@ -404,10 +409,16 @@ public:
 
     void insert(const T& key) {
         Insert(key);
+        if (!Node<T>::check(root_)) {
+            std::cout << "error!";
+        }
     }
 
     void erase(const T& key) {
         Erase(key);
+        if (!Node<T>::check(root_)) {
+            std::cout << "error!";
+        }
     }
 
     iterator lower_bound(const T& key) const {
